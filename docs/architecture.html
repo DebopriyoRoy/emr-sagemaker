@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal Fraud Detection — Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root {
+    --bg:     #09101f;
+    --panel:  #0f1a2e;
+    --border: #1e2d45;
+    --blue:   #2d7eff;
+    --cyan:   #00c8e0;
+    --teal:   #00b38a;
+    --purple: #8b6cf7;
+    --coral:  #ff6b5b;
+    --amber:  #f59e0b;
+    --gray:   #1e2d45;
+    --text:   #e2e8f0;
+    --muted:  #64748b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; padding:32px 24px 60px; }
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none;
+    background-image: linear-gradient(rgba(45,126,255,.03) 1px,transparent 1px),
+                      linear-gradient(90deg,rgba(45,126,255,.03) 1px,transparent 1px);
+    background-size: 40px 40px;
+  }
+  h1 { font-size:1.5rem; font-weight:600; text-align:center; margin-bottom:6px;
+       background:linear-gradient(135deg,var(--cyan),var(--blue),var(--purple));
+       -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .subtitle { text-align:center; font-size:.78rem; color:var(--muted); font-family:'JetBrains Mono',monospace;
+              letter-spacing:1.5px; margin-bottom:36px; }
+
+  /* ── Section labels ── */
+  .sec-label { font-size:.68rem; letter-spacing:2px; color:var(--muted); text-transform:uppercase;
+               margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+
+  /* ── Generic card ── */
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 20px; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; }
+  .card.blue::before   { background:linear-gradient(90deg,var(--blue),var(--cyan)); }
+  .card.teal::before   { background:linear-gradient(90deg,var(--teal),var(--cyan)); }
+  .card.purple::before { background:linear-gradient(90deg,var(--purple),var(--blue)); }
+  .card.coral::before  { background:linear-gradient(90deg,var(--coral),var(--amber)); }
+  .card.gray::before   { background:var(--border); }
+  .card-title { font-size:.8rem; font-weight:600; margin-bottom:4px; }
+  .card-sub   { font-size:.68rem; color:var(--muted); font-family:'JetBrains Mono',monospace; line-height:1.6; }
+
+  /* ── Section wrapper ── */
+  .section { margin-bottom:28px; }
+
+  /* ── Row / grid helpers ── */
+  .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .row-auto { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; }
+
+  /* ── Arrow connector ── */
+  .arrow-down { display:flex; align-items:center; justify-content:center; padding:6px 0; gap:10px; }
+  .arrow-line { flex:1; height:1px; background:var(--border); }
+  .arrow-tip  { color:var(--cyan); font-size:.9rem; }
+  .arrow-label { font-size:.65rem; color:var(--muted); font-family:'JetBrains Mono',monospace; letter-spacing:.5px; }
+
+  /* ── Dataset boxes ── */
+  .ds-box { display:flex; flex-direction:column; gap:4px; padding:12px 14px; border-radius:10px; border:1px solid; }
+  .ds-box.blue   { border-color:rgba(45,126,255,.3); background:rgba(45,126,255,.06); }
+  .ds-box.teal   { border-color:rgba(0,179,138,.3);  background:rgba(0,179,138,.06); }
+  .ds-box.purple { border-color:rgba(139,108,247,.3); background:rgba(139,108,247,.06); }
+  .ds-name  { font-size:.75rem; font-weight:600; }
+  .ds-meta  { font-size:.65rem; color:var(--muted); font-family:'JetBrains Mono',monospace; line-height:1.5; }
+  .ds-size  { font-size:.65rem; font-family:'JetBrains Mono',monospace; font-weight:600; }
+  .ds-box.blue .ds-size   { color:var(--blue); }
+  .ds-box.teal .ds-size   { color:var(--teal); }
+  .ds-box.purple .ds-size { color:var(--purple); }
+
+  /* ── EMR feature chips ── */
+  .feat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px; }
+  .feat-chip { background:rgba(0,200,224,.06); border:1px solid rgba(0,200,224,.18);
+               border-radius:8px; padding:8px 10px; }
+  .feat-chip .fc-label { font-size:.6rem; color:var(--cyan); letter-spacing:1px; margin-bottom:3px; text-transform:uppercase; }
+  .feat-chip .fc-val   { font-size:.7rem; color:var(--text); }
+
+  /* ── Endpoint pill ── */
+  .endpoint-pill { display:flex; align-items:center; gap:10px; padding:12px 16px;
+                   background:rgba(0,179,138,.06); border:1px solid rgba(0,179,138,.25);
+                   border-radius:10px; margin-top:10px; }
+  .live-dot { width:8px; height:8px; border-radius:50%; background:var(--teal);
+              box-shadow:0 0 6px var(--teal); animation:pulse 2s infinite; flex-shrink:0; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+  .ep-info .ep-name { font-size:.78rem; font-weight:600; color:var(--teal); }
+  .ep-info .ep-sub  { font-size:.65rem; color:var(--muted); font-family:'JetBrains Mono',monospace; }
+
+  /* ── S3 path tags ── */
+  .s3-path { font-family:'JetBrains Mono',monospace; font-size:.65rem; color:var(--cyan);
+             background:rgba(45,126,255,.08); border:1px solid rgba(45,126,255,.15);
+             border-radius:5px; padding:3px 8px; display:inline-block; margin-top:4px; }
+
+  /* ── Accounts ── */
+  .accounts { display:grid; grid-template-columns:1fr 40px 1fr; gap:0; align-items:center; }
+  .acct-box { border-radius:10px; padding:14px; border:1px solid; }
+  .acct-box.mgmt { border-color:rgba(45,126,255,.3); background:rgba(45,126,255,.06); }
+  .acct-box.dr   { border-color:rgba(255,107,91,.3);  background:rgba(255,107,91,.06); }
+  .acct-title  { font-size:.75rem; font-weight:600; margin-bottom:4px; }
+  .acct-id     { font-family:'JetBrains Mono',monospace; font-size:.62rem; color:var(--muted); }
+  .acct-role   { font-size:.62rem; color:var(--muted); margin-top:4px; }
+  .acct-arrow  { text-align:center; color:var(--cyan); font-size:1.2rem; }
+
+  /* ── IAM table ── */
+  .iam-table { width:100%; border-collapse:collapse; margin-top:10px; }
+  .iam-table th { font-size:.65rem; color:var(--muted); text-align:left; padding:5px 8px;
+                  border-bottom:1px solid var(--border); letter-spacing:.5px; }
+  .iam-table td { font-size:.65rem; font-family:'JetBrains Mono',monospace; padding:6px 8px;
+                  border-bottom:1px solid rgba(30,45,69,.5); color:var(--text); }
+  .iam-table tr:last-child td { border-bottom:none; }
+  .iam-table tr:hover td { background:rgba(255,255,255,.02); }
+
+  /* ── Metrics row ── */
+  .metric-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+  .metric-box { background:var(--panel); border:1px solid var(--border); border-radius:10px;
+                padding:12px; text-align:center; }
+  .metric-val   { font-size:1.3rem; font-weight:600;
+                  background:linear-gradient(135deg,var(--cyan),var(--blue));
+                  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .metric-label { font-size:.6rem; color:var(--muted); font-family:'JetBrains Mono',monospace;
+                  letter-spacing:.5px; margin-top:4px; }
+
+  /* ── Legend ── */
+  .legend { display:flex; flex-wrap:wrap; gap:16px; justify-content:center; margin-top:28px; padding:14px;
+            background:var(--panel); border:1px solid var(--border); border-radius:10px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:.65rem; color:var(--muted); }
+  .legend-dot  { width:10px; height:10px; border-radius:3px; }
+
+  @media(max-width:640px){
+    .row3,.feat-grid,.metric-row { grid-template-columns:1fr; }
+    .row2 { grid-template-columns:1fr; }
+    .accounts { grid-template-columns:1fr; }
+    .acct-arrow { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Universal Fraud Detection System</h1>
+<p class="subtitle">AWS EMR · Apache Spark · SageMaker · XGBoost · Multi-Account DR</p>
+
+<!-- ══ SECTION 1 — INPUT DATASETS ══ -->
+<div class="section">
+  <div class="sec-label">① Input datasets</div>
+  <div class="row3">
+    <div class="ds-box blue">
+      <div class="ds-name">financial_fraud_detection_dataset.csv</div>
+      <div class="ds-size">759 MB · 5,000,000 rows</div>
+      <div class="ds-meta">timestamp · amount · sender_account<br>transaction_type · merchant · location · is_fraud</div>
+    </div>
+    <div class="ds-box teal">
+      <div class="ds-name">creditcard.csv</div>
+      <div class="ds-size">143 MB · 284,807 rows</div>
+      <div class="ds-meta">Time (numeric seconds) · V1–V28 (PCA)<br>Amount · Class</div>
+    </div>
+    <div class="ds-box purple">
+      <div class="ds-name">credit_card_fraud_dataset.csv</div>
+      <div class="ds-size">100,000 rows</div>
+      <div class="ds-meta">TransactionDate · Amount · MerchantID<br>TransactionType · Location · IsFraud</div>
+    </div>
+  </div>
+  <div style="margin-top:8px;text-align:center">
+    <span class="s3-path">s3://databucket-fraud-detection/input_data/</span>
+  </div>
+</div>
+
+<div class="arrow-down"><div class="arrow-line"></div><span class="arrow-tip">▼</span><span class="arrow-label">EMR spark submit</span><div class="arrow-line"></div></div>
+
+<!-- ══ SECTION 2 — EMR ══ -->
+<div class="section">
+  <div class="sec-label">② Amazon EMR — distributed feature engineering</div>
+  <div class="card teal">
+    <div class="card-title" style="color:var(--cyan)">⚡ Amazon EMR  ·  emr-7.12.0  ·  Spark 3.5.6  ·  Hadoop 3.4.1</div>
+    <div class="card-sub">Cluster j-3OCMEIBXD63GR  ·  1 Primary + 2 Core nodes (m4.xlarge)  ·  YARN 12,288 MB/node  ·  emr-project-vpc (us-east-1)</div>
+    <div class="card-sub" style="margin-top:4px">Script: <span style="color:var(--cyan)">universal_feature_eng_v2.py</span>  ·  args: --ds1 --ds2 --ds3 --output_uri  ·  .repartition(200)  ·  spark.sql.shuffle.partitions=200</div>
+
+    <div class="feat-grid">
+      <div class="feat-chip">
+        <div class="fc-label">Amount features</div>
+        <div class="fc-val">log_amount · amount_z · is_high_amount</div>
+      </div>
+      <div class="feat-chip">
+        <div class="fc-label">Time features</div>
+        <div class="fc-val">hour · hour_sin · hour_cos · is_night · day_of_week · is_weekend · txn_month</div>
+      </div>
+      <div class="feat-chip">
+        <div class="fc-label">User behaviour</div>
+        <div class="fc-val">user_mean_amount · user_std_amount · user_txn_count · user_amount_z</div>
+      </div>
+      <div class="feat-chip">
+        <div class="fc-label">Velocity</div>
+        <div class="fc-val">txn_count_5m (5-minute bucket aggregation)</div>
+      </div>
+      <div class="feat-chip">
+        <div class="fc-label">PCA magnitude</div>
+        <div class="fc-val">pca_l2 · pca_max_abs · pca_mean (from V1–V28)</div>
+      </div>
+      <div class="feat-chip" style="border-color:rgba(0,179,138,.3);background:rgba(0,179,138,.08)">
+        <div class="fc-label" style="color:var(--teal)">Output schema</div>
+        <div class="fc-val" style="color:var(--teal);font-weight:600">18 universal features + label + source</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;padding:10px 14px;background:rgba(0,0,0,.25);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--teal)">
+      output_data/universal-features/<br>
+      &nbsp;&nbsp;source=financial/&nbsp;&nbsp;&nbsp;&nbsp;←&nbsp;5,000,000 rows<br>
+      &nbsp;&nbsp;source=creditcard/&nbsp;&nbsp;&nbsp;←&nbsp;&nbsp;&nbsp;284,807 rows<br>
+      &nbsp;&nbsp;source=credit_card_fraud/&nbsp;←&nbsp;&nbsp;&nbsp;100,000 rows<br>
+      &nbsp;&nbsp;<span style="color:var(--muted)">Total: 5,384,807 rows combined</span>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down"><div class="arrow-line"></div><span class="arrow-tip">▼</span><span class="arrow-label">parquet → SageMaker</span><div class="arrow-line"></div></div>
+
+<!-- ══ SECTION 3 — SAGEMAKER ══ -->
+<div class="section">
+  <div class="sec-label">③ Amazon SageMaker — training &amp; endpoint deployment</div>
+  <div class="card purple">
+    <div class="card-title" style="color:var(--purple)">🧠 Amazon SageMaker Studio</div>
+    <div class="card-sub">Domain: my-domain (d-ekgathekewrd)  ·  ml.t3.medium  ·  Public Internet access  ·  SageMaker Distribution 3.9.0</div>
+
+    <div class="row2" style="margin-top:12px;gap:10px">
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--purple);margin-bottom:6px">Data loading</div>
+        <div class="card-sub">1,500,000 rows (memory-safe)<br>Stop-at-target file-by-file loading<br>Align to EMR_FEATURE_COLS schema</div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--purple);margin-bottom:6px">Preprocessing</div>
+        <div class="card-sub">SimpleImputer(strategy='median')<br>StandardScaler(with_mean=False)<br>compute_sample_weight('balanced')</div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--purple);margin-bottom:6px">XGBoost training</div>
+        <div class="card-sub">n_estimators=300 · max_depth=6<br>learning_rate=0.05 · eval_metric=aucpr<br>early_stopping_rounds=30</div>
+      </div>
+      <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:12px">
+        <div style="font-size:.72rem;font-weight:600;color:var(--purple);margin-bottom:6px">Model artifacts</div>
+        <div class="card-sub">xgb_model.joblib<br>preprocessor.joblib<br>feature_names.joblib · metrics.json</div>
+      </div>
+    </div>
+
+    <div class="endpoint-pill">
+      <div class="live-dot"></div>
+      <div class="ep-info">
+        <div class="ep-name">universal-fraud-endpoint</div>
+        <div class="ep-sub">SKLearnModel · framework 1.2-1 · ml.t2.medium · inference.py (model_fn / input_fn / predict_fn / output_fn)</div>
+        <div class="ep-sub" style="margin-top:2px;color:var(--teal)">predict_any_csv() — auto-maps any CSV to 18-feature schema · batch 100 rows/request · application/json</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down">
+  <div class="arrow-line"></div>
+  <span class="arrow-tip">▼</span>
+  <span class="arrow-label">upload artifacts + backup</span>
+  <div class="arrow-line"></div>
+</div>
+
+<!-- ══ SECTION 4 — S3 STORAGE ══ -->
+<div class="section">
+  <div class="sec-label">④ S3 storage  ·  ⑤ Multi-account disaster recovery</div>
+  <div class="row2">
+    <div class="card blue">
+      <div class="card-title" style="color:var(--blue)">Primary bucket  ·  us-east-1</div>
+      <div class="card-sub" style="color:var(--cyan)">databucket-fraud-detection</div>
+      <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:.63rem;color:var(--muted);line-height:2">
+        <span style="color:var(--cyan)">models/universal-fraud-xgb/</span>  model.tar.gz<br>
+        <span style="color:var(--cyan)">results/universal-fraud-xgb/</span> metrics.json<br>
+        <span style="color:var(--cyan)">output_data/universal-features/</span><br>
+        <span style="color:var(--cyan)">input_data/</span>  ·  <span style="color:var(--cyan)">jobs/</span>  ·  <span style="color:var(--cyan)">emr_cluster_logs/</span>
+      </div>
+    </div>
+
+    <div class="card coral">
+      <div class="card-title" style="color:var(--coral)">DR bucket  ·  us-east-2  (Ohio)</div>
+      <div class="card-sub" style="color:var(--coral)">fraud-detection-dr  ·  Versioning ON  ·  SSE-S3</div>
+      <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:.63rem;color:var(--muted);line-height:2">
+        <span style="color:var(--coral)">models/universal-fraud-xgb/</span>  model.tar.gz<br>
+        <span style="color:var(--coral)">results/universal-fraud-xgb/</span> metrics.json<br>
+        <span style="color:var(--coral)">output_data/</span>  EMR features backup<br>
+        Block all public access · account 337023347358
+      </div>
+    </div>
+  </div>
+
+  <!-- IAM Cross-account -->
+  <div class="card gray" style="margin-top:12px">
+    <div class="card-title" style="color:var(--amber)">🔐 Cross-account IAM policies</div>
+    <table class="iam-table">
+      <thead><tr><th>Policy</th><th>Location</th><th>Grants</th></tr></thead>
+      <tbody>
+        <tr><td>crossaccs3permission (inline)</td><td>Account A → EMR_EC2_DefaultRole</td><td>s3:PutObject / GetObject / ListBucket on fraud-detection-dr/*</td></tr>
+        <tr><td>AllowAccountAEMRWrite (bucket policy)</td><td>Account B → fraud-detection-dr</td><td>Trusts EMR_EC2_DefaultRole from 557270420072</td></tr>
+        <tr><td>AllowSageMakerRole (bucket policy)</td><td>Account B → fraud-detection-dr</td><td>Trusts AmazonSageMaker-ExecutionRole from 557270420072</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ SECTION 5 — AWS ORGANIZATIONS ══ -->
+<div class="section">
+  <div class="sec-label">⑤ AWS Organizations  ·  org: o-n3jw25ozb1</div>
+  <div class="card gray">
+    <div class="accounts">
+      <div class="acct-box mgmt">
+        <div class="acct-title" style="color:var(--blue)">babindev — management account</div>
+        <div class="acct-id">ID: 557270420072  ·  us-east-1</div>
+        <div class="acct-role">EMR_EC2_DefaultRole<br>AmazonSageMaker-ExecutionRole-20260217T071318</div>
+      </div>
+      <div class="acct-arrow">→</div>
+      <div class="acct-box dr">
+        <div class="acct-title" style="color:var(--coral)">backup-dr — member account</div>
+        <div class="acct-id">ID: 337023347358  ·  us-east-2</div>
+        <div class="acct-role">OrganizationAccountAccessRole (auto-created)<br>Billing consolidated under management account</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ METRICS ══ -->
+<div class="sec-label">Key metrics</div>
+<div class="metric-row">
+  <div class="metric-box"><div class="metric-val">5.38M</div><div class="metric-label">ROWS PROCESSED</div></div>
+  <div class="metric-box"><div class="metric-val">18</div><div class="metric-label">UNIVERSAL FEATURES</div></div>
+  <div class="metric-box"><div class="metric-val">2</div><div class="metric-label">AWS ACCOUNTS (ORG)</div></div>
+  <div class="metric-box"><div class="metric-val">1</div><div class="metric-label">ENDPOINT ALL DATASETS</div></div>
+</div>
+
+<!-- ══ LEGEND ══ -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>AWS Service</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>EMR / Spark</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>SageMaker</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--coral)"></div>Disaster Recovery</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>IAM / Security</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>Data / Storage</div>
+</div>
+
+</body>
+</html>

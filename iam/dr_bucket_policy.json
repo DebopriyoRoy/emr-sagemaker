@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowEMRRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::557270420072:role/EMR_EC2_DefaultRole"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::fraud-detection-dr",
+        "arn:aws:s3:::fraud-detection-dr/*"
+      ]
+    },
+    {
+      "Sid": "AllowSageMakerRole",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::557270420072:role/service-role/AmazonSageMaker-ExecutionRole-20260217T071318"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::fraud-detection-dr",
+        "arn:aws:s3:::fraud-detection-dr/*"
+      ]
+    }
+  ]
+}
