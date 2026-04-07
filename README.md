@@ -13,6 +13,14 @@
 
 ## Architecture Overview
 
+> 🖥️ **Interactive Diagram** — View the full animated architecture in your browser:
+> **[https://debopriyoroy.github.io/fraud-detection-aws/docs/architecture.html](https://debopriyoroy.github.io/fraud-detection-aws/docs/architecture.html)**
+
+![Universal Fraud Detection — Architecture](docs/architecture_preview.png)
+
+<details>
+<summary>📋 ASCII Architecture (text fallback)</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    ACCOUNT A — babindev (557270420072)                  │
@@ -59,6 +67,8 @@
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+</details>
+
 ---
 
 ## Repository Structure
@@ -85,7 +95,8 @@ fraud-detection-aws/
 │   └── predict.py                     ← CLI inference script
 │
 ├── docs/
-│   └── architecture.html             ← Interactive architecture diagram
+│   ├── architecture.html             ← Interactive architecture diagram (GitHub Pages)
+│   └── architecture_preview.png      ← Static preview rendered in this README
 │
 └── data/
     └── README.md                      ← S3 dataset paths reference
