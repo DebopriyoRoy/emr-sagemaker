@@ -10,12 +10,6 @@
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ---
-
-## Architecture Overview
-
-> 🖥️ **Interactive Diagram** — View the full animated architecture in your browser:
-> **[https://debopriyoroy.github.io/fraud-detection-aws/fraud_detection_pictorial.html](https://debopriyoroy.github.io/fraud-detection-aws/fraud_detection_pictorial.html)**
-
 ![Universal Fraud Detection — Architecture](architecture_preview.png)
 
 <details>
